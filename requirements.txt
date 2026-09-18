@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 numpy
 pandas
 scikit-learn
@@ -7,14 +6,4 @@ plotly
 streamlit
 joblib
 PyYAML
-=======
-numpy
-pandas
-scikit-learn
-matplotlib
-plotly
-streamlit
-joblib
-PyYAML
->>>>>>> 34554ab853babd8e3546aa4d8d72f7be0694ecd2
 pytest
