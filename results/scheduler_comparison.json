@@ -1,0 +1,51 @@
+{
+    "experiment": {
+        "num_tasks": 100,
+        "seed": 42
+    },
+    "workload_file": "data/experiment_workload.csv",
+    "results": [
+        {
+            "average_waiting_time": 229.23,
+            "average_response_time": 229.23,
+            "average_turnaround_time": 234.38,
+            "average_tardiness": 227.33,
+            "deadline_misses": 99,
+            "deadline_miss_rate": 99.0,
+            "cpu_utilization": 100.0,
+            "throughput": 0.1941747572815534,
+            "context_switches": 99,
+            "preemptions": 0,
+            "scheduler": "FIFO",
+            "total_time": 515
+        },
+        {
+            "average_waiting_time": 228.57,
+            "average_response_time": 228.57,
+            "average_turnaround_time": 233.72,
+            "average_tardiness": 226.67,
+            "deadline_misses": 99,
+            "deadline_miss_rate": 99.0,
+            "cpu_utilization": 100.0,
+            "throughput": 0.1941747572815534,
+            "context_switches": 99,
+            "preemptions": 0,
+            "scheduler": "EDF",
+            "total_time": 515
+        },
+        {
+            "average_waiting_time": 246.26,
+            "average_response_time": 246.26,
+            "average_turnaround_time": 251.41,
+            "average_tardiness": 244.36,
+            "deadline_misses": 99,
+            "deadline_miss_rate": 99.0,
+            "cpu_utilization": 100.0,
+            "throughput": 0.1941747572815534,
+            "context_switches": 99,
+            "preemptions": 0,
+            "scheduler": "ML-EDF",
+            "total_time": 515
+        }
+    ]
+}

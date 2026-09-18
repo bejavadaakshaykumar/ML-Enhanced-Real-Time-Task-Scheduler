@@ -1,0 +1,4 @@
+scheduler,average_waiting_time,average_response_time,average_turnaround_time,average_tardiness,deadline_misses,deadline_miss_rate,cpu_utilization,throughput,context_switches,preemptions,total_time
+FIFO,229.23,229.23,234.38,227.33,99,99.0,100.0,0.1941747572815534,99,0,515
+EDF,228.57,228.57,233.72,226.67,99,99.0,100.0,0.1941747572815534,99,0,515
+ML-EDF,246.26,246.26,251.41,244.36,99,99.0,100.0,0.1941747572815534,99,0,515
