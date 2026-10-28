@@ -1,13 +1,36 @@
+import os
+
 import joblib
 import pandas as pd
 
 from scheduler.task import Task
 
 
-MODEL_FILE = "models/deadline_miss_model.pkl"
+# Resolve model path relative to the project root,
+# regardless of the current working directory.
+PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))
+)
+
+MODEL_FILE = os.path.join(
+    PROJECT_ROOT,
+    "models",
+    "deadline_miss_model.pkl"
+)
 
 
 class DeadlineMissPredictor:
+    """
+    Predicts the probability that a task will miss its deadline
+    using a trained Random Forest Classifier.
+
+    Input features:
+        arrival_time, deadline, priority, input_size
+
+    Output:
+        - predict_probability(): float in [0.0, 1.0]
+        - predict(): binary 0 or 1 (threshold = 0.5)
+    """
 
     def __init__(
         self,
@@ -39,6 +62,10 @@ class DeadlineMissPredictor:
         self,
         task
     ):
+        """
+        Return the probability (0.0–1.0) that this task
+        will miss its deadline.
+        """
 
         features = self._create_features(
             task
@@ -76,6 +103,9 @@ class DeadlineMissPredictor:
         self,
         task
     ):
+        """
+        Return binary prediction: 1 = deadline likely missed.
+        """
 
         probability = self.predict_probability(
             task

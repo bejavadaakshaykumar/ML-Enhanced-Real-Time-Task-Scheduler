@@ -1,685 +1,309 @@
-# ML-Enhanced Real-Time Task Scheduler
+# 🧠 ML-Enhanced Real-Time Task Scheduler
+
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://ml-enhanced-real-time-task-scheduler-evvdqgmygygsopsey8eegz.streamlit.app/)
+[![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)](https://python.org)
+[![Tests](https://img.shields.io/badge/Tests-20%20passed-brightgreen.svg)]()
+[![License](https://img.shields.io/badge/License-Academic-lightgrey.svg)]()
 
 An intelligent real-time task scheduling system that combines classical CPU scheduling algorithms with Machine Learning to improve task prioritization under execution-time uncertainty and deadline constraints.
 
-## Overview
+## 🔍 Overview
 
-Real-time systems execute tasks that often have strict deadlines. Traditional scheduling algorithms such as FIFO and Earliest Deadline First (EDF) use fixed scheduling rules and do not consider predicted execution behavior or deadline-miss risk.
+Real-time systems execute tasks with strict deadlines. Traditional scheduling algorithms like FIFO and EDF use fixed rules and don't consider predicted execution behavior or deadline-miss risk.
 
-This project implements and compares:
+This project implements, compares, and visualizes **three scheduling algorithms**:
 
-- FIFO (First-In, First-Out)
-- EDF (Earliest Deadline First)
-- ML-EDF (Machine Learning enhanced EDF)
+| Algorithm | Strategy | Key Insight |
+|-----------|----------|-------------|
+| **FIFO** | First-In, First-Out | Baseline — tasks run in arrival order |
+| **EDF** | Earliest Deadline First | Classical optimal — always picks nearest deadline |
+| **ML-EDF** | ML-Enhanced EDF | Novel — uses ML predictions for risk-aware scheduling |
 
-The ML-EDF scheduler uses Machine Learning predictions to estimate execution time and deadline-miss probability, and combines these predictions with task deadline information to calculate a risk-aware scheduling priority.
+### Why Do EDF and ML-EDF Produce Different Results?
 
-The project also provides an interactive Streamlit dashboard for workload generation, scheduler comparison, performance visualization, and ML prediction analysis.
+This is **by design**. EDF schedules purely by deadline. ML-EDF incorporates two additional signals:
 
-## Key Features
+1. **Predicted Execution Time** — estimates how long a task will take
+2. **Deadline-Miss Probability** — estimates the risk of missing the deadline
 
-### Classical Scheduling
+These are combined into a **risk-aware urgency score**:
 
-- FIFO scheduling
-- Earliest Deadline First (EDF)
-- Preemptive and non-preemptive scheduling support
-- Custom Min-Heap implementation for priority-based scheduling
-- Virtual clock for deterministic simulation
-- Context-switch tracking
-- Preemption tracking
-
-### Machine Learning
-
-Two Random Forest models are used:
-
-1. **Execution-Time Regression** - Predicts the execution time of a task.
-2. **Deadline-Miss Classification** - Predicts the probability that a task may miss its deadline.
-
-ML-EDF combines these predictions with the current scheduling time to calculate remaining slack and risk-aware urgency.
-
-### Simulation
-
-The simulation engine supports:
-
-- Task arrivals
-- Ready-queue management
-- Task execution
-- Preemption
-- Context switching
-- Completion-time tracking
-- Deadline-miss detection
-- Waiting-time calculation
-- Response-time calculation
-- Turnaround-time calculation
-- CPU utilization
-- Throughput
-- Tardiness
-
-### Experimentation
-
-The project compares FIFO, EDF, and ML-EDF using the same workload so that the scheduling algorithms can be evaluated under identical conditions.
-
-Experiment results are saved as:
-
-```text
-results/scheduler_comparison.csv
-results/scheduler_comparison.json
 ```
+remaining_slack = deadline − current_time − predicted_execution_time
+risk_score      = miss_probability × risk_weight
+urgency_score   = remaining_slack − risk_score
+```
+
+A **lower urgency score** means **higher scheduling priority**. This means ML-EDF can reorder tasks compared to EDF — promoting tasks with tight slack or high miss probability, even if their raw deadline is later.
+
+> **When risk_weight = 0**, ML-EDF uses only slack-based ordering (ignoring risk).
+> **When risk_weight is high**, tasks with high miss probability get heavily promoted.
+
+## ✨ Key Features
+
+### Scheduling Engine
+- FIFO, EDF, and ML-EDF schedulers with consistent interfaces
+- Preemptive and non-preemptive scheduling modes
+- Custom Min-Heap data structure for priority-based scheduling
+- Virtual clock for deterministic simulation
+- Context-switch and preemption tracking
+
+### Machine Learning Pipeline
+- **Random Forest Regressor** — predicts task execution time
+- **Random Forest Classifier** — predicts deadline-miss probability
+- Feature set: `arrival_time`, `deadline`, `priority`, `input_size`
+- Model persistence with joblib (`.pkl` files)
 
 ### Interactive Dashboard
+- Plotly-powered interactive charts (bar charts, Gantt timeline)
+- EDF vs ML-EDF scheduling order comparison
+- Per-task deadline met/missed status with color coding
+- Actual vs predicted execution time visualization
+- Risk analysis with urgency scores and miss probabilities
+- Educational "How It Works" section explaining each algorithm
+- Configurable workload size, random seed, and risk weight
 
-The Streamlit dashboard provides:
+### Simulation Metrics
+- Waiting time, response time, turnaround time
+- Deadline misses and miss rate
+- CPU utilization and throughput
+- Context switches and preemptions
+- Tardiness (lateness beyond deadline)
 
-- Workload configuration
-- Task table
-- Scheduler selection
-- Scheduler performance comparison
-- Waiting-time visualization
-- Deadline-miss comparison
-- CPU utilization
-- Throughput
-- Execution trace
-- ML-EDF prediction information
+## 🏗️ System Architecture
 
-## System Architecture
-
-```text
-                    +----------------------+
-                    |   Workload Generator |
-                    +----------+-----------+
-                               |
-                               v
-                    +----------------------+
-                    |      Task Model       |
-                    | Arrival / Execution   |
-                    | Deadline / Priority   |
-                    +----------+-----------+
-                               |
-                 +-------------+-------------+
-                 |             |             |
-                 v             v             v
-            +---------+   +---------+   +------------+
-            |  FIFO   |   |   EDF   |   |   ML-EDF   |
-            +----+----+   +----+----+   +-----+------+
-                 |             |               |
-                 |             |         +-----+------+
-                 |             |         | ML Models  |
-                 |             |         +-----+------+
-                 |             |               |
-                 +-------------+---------------+
-                               |
-                               v
-                    +----------------------+
-                    |  Simulation Engine   |
-                    | Virtual Clock        |
-                    | Context Switching    |
-                    | Preemption           |
-                    +----------+-----------+
-                               |
-                               v
-                    +----------------------+
-                    |       Metrics        |
-                    | Waiting Time         |
-                    | Response Time        |
-                    | Deadline Misses      |
-                    | CPU Utilization      |
-                    | Throughput           |
-                    +----------+-----------+
-                               |
-                               v
-                    +----------------------+
-                    | Streamlit Dashboard  |
-                    +----------------------+
+```
+                    ┌──────────────────────┐
+                    │   Workload Generator  │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │     Task Model        │
+                    │ arrival / execution   │
+                    │ deadline / priority   │
+                    └──────────┬───────────┘
+                               │
+                 ┌─────────────┼─────────────┐
+                 │             │             │
+                 ▼             ▼             ▼
+            ┌─────────┐  ┌─────────┐  ┌────────────┐
+            │  FIFO   │  │   EDF   │  │   ML-EDF   │
+            └────┬────┘  └────┬────┘  └─────┬──────┘
+                 │             │             │
+                 │             │       ┌─────┴──────┐
+                 │             │       │ ML Models   │
+                 │             │       │ Regression  │
+                 │             │       │ Classifier  │
+                 │             │       └─────┬──────┘
+                 │             │             │
+                 └─────────────┼─────────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │   Simulation Engine   │
+                    │ Virtual Clock         │
+                    │ Context Switching     │
+                    │ Preemption            │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │      Metrics          │
+                    │ Wait / Response Time  │
+                    │ Deadline Misses       │
+                    │ CPU Utilization       │
+                    └──────────┬───────────┘
+                               │
+                               ▼
+                    ┌──────────────────────┐
+                    │  Streamlit Dashboard  │
+                    │  Plotly Visualizations │
+                    └──────────────────────┘
 ```
 
-## Project Structure
+## 📁 Project Structure
 
-```text
+```
 ML_Task_Scheduler/
 │
-├── scheduler/
+├── scheduler/              # Core scheduling algorithms
 │   ├── __init__.py
-│   ├── task.py
-│   ├── virtual_clock.py
-│   ├── fifo.py
-│   ├── min_heap.py
-│   ├── edf.py
-│   ├── simulator.py
-│   └── metrics.py
+│   ├── task.py             # Task dataclass (arrival, exec, deadline, priority)
+│   ├── virtual_clock.py    # Deterministic virtual clock
+│   ├── fifo.py             # FIFO scheduler
+│   ├── min_heap.py         # Custom min-heap with key functions
+│   ├── edf.py              # Earliest Deadline First scheduler
+│   ├── simulator.py        # Simulation engine (preemptive + non-preemptive)
+│   └── metrics.py          # Performance metric calculations
 │
-├── workload/
+├── workload/               # Workload generation and validation
 │   ├── __init__.py
-│   ├── generator.py
-│   ├── loader.py
-│   └── validator.py
+│   ├── generator.py        # Reproducible task workload generator
+│   ├── loader.py           # CSV/JSON workload I/O
+│   └── validator.py        # Task and workload validation
 │
-├── ml/
+├── ml/                     # Machine learning pipeline
 │   ├── __init__.py
-│   ├── features.py
-│   ├── dataset.py
-│   ├── train_regression.py
-│   ├── predict.py
-│   ├── evaluate.py
-│   ├── train_classifier.py
-│   ├── predict_deadline.py
-│   ├── evaluate_classifier.py
-│   └── ml_edf.py
+│   ├── features.py         # Feature extraction
+│   ├── dataset.py          # ML dataset generation
+│   ├── train_regression.py # Execution time model training
+│   ├── predict.py          # Execution time predictor
+│   ├── evaluate.py         # Regression model evaluation
+│   ├── train_classifier.py # Deadline-miss model training
+│   ├── predict_deadline.py # Deadline-miss predictor
+│   ├── evaluate_classifier.py # Classifier evaluation
+│   └── ml_edf.py           # ML-Enhanced EDF scheduler
 │
-├── experiments/
+├── experiments/            # Experiment runner
 │   ├── __init__.py
-│   └── run_experiment.py
+│   └── run_experiment.py   # CLI comparison of FIFO, EDF, ML-EDF
 │
-├── dashboard/
-│   └── app.py
+├── dashboard/              # Web interface
+│   └── app.py              # Streamlit dashboard with Plotly charts
 │
-├── tests/
-│   ├── test_fifo.py
-│   ├── test_min_heap.py
-│   ├── test_edf.py
-│   ├── test_simulator.py
-│   └── test_ml_edf.py
+├── tests/                  # Test suite (20 tests)
+│   ├── test_fifo.py        # FIFO ordering tests
+│   ├── test_min_heap.py    # Heap operations tests
+│   ├── test_edf.py         # EDF ordering tests
+│   ├── test_simulator.py   # Simulation engine tests + edge cases
+│   ├── test_workload.py    # Workload generation tests
+│   └── test_ml_edf.py      # ML-EDF predictions, formula, edge cases
 │
-├── data/
-├── models/
-├── results/
+├── data/                   # Generated datasets
+├── models/                 # Trained ML model files (.pkl)
+├── results/                # Experiment output files
 │
-├── requirements.txt
-├── config.yaml
+├── requirements.txt        # Python dependencies
+├── config.yaml             # Project configuration
 └── README.md
 ```
 
-## Technologies Used
+## 🛠️ Technologies
 
 | Technology | Purpose |
-|---|---|
-| Python | Core implementation |
+|------------|---------|
+| Python 3.10+ | Core implementation |
 | NumPy | Numerical operations |
 | Pandas | Dataset and result processing |
-| Scikit-learn | Machine Learning models |
-| Matplotlib | Visualization |
-| Plotly | Interactive visualization |
+| Scikit-learn | Random Forest models (regression + classification) |
+| Plotly | Interactive charts and Gantt timelines |
 | Streamlit | Web dashboard |
 | Joblib | ML model serialization |
+| Pytest | Automated testing (20 tests) |
 | PyYAML | Configuration management |
-| Pytest | Automated testing |
 
-## Scheduling Algorithms
+## 🚀 Getting Started
 
-### 1. FIFO
-
-First-In, First-Out schedules tasks according to their arrival order.
-
-```text
-Task 1 -> Task 2 -> Task 3 -> Task 4
-```
-
-The task that enters the ready queue first is executed first.
-
-### 2. EDF
-
-Earliest Deadline First selects the task with the earliest deadline.
-
-The custom Min-Heap uses the following ordering:
-
-```text
-Deadline
-    |
-    v
-Priority
-    |
-    v
-Arrival Time
-    |
-    v
-Task ID
-```
-
-### 3. ML-EDF
-
-ML-EDF extends EDF using Machine Learning predictions.
-
-For each ready task, the system predicts:
-
-```text
-Predicted Execution Time
-          +
-Deadline-Miss Probability
-          +
-Remaining Slack
-```
-
-The scheduler calculates:
-
-```text
-Remaining Slack =
-Deadline - Current Time - Predicted Execution Time
-```
-
-A risk-aware urgency score is calculated using:
-
-```text
-Risk Score =
-Deadline-Miss Probability x Risk Weight
-
-Urgency Score =
-Remaining Slack - Risk Score
-```
-
-A smaller urgency score indicates higher scheduling urgency.
-
-> ML-EDF is a project-specific ML-enhanced scheduling strategy rather than a standard scheduling algorithm.
-
-## Machine Learning Pipeline
-
-### Execution-Time Prediction
-
-The regression model uses task information such as:
-
-```text
-Arrival Time
-Deadline
-Priority
-Input Size
-```
-
-The target variable is:
-
-```text
-Execution Time
-```
-
-A Random Forest Regressor is trained and saved as:
-
-```text
-models/execution_time_model.pkl
-```
-
-### Deadline-Miss Prediction
-
-The classification model predicts whether a task is expected to miss its deadline.
-
-The model is saved as:
-
-```text
-models/deadline_miss_model.pkl
-```
-
-The ML-EDF scheduler uses the predicted probability rather than only a binary prediction.
-
-## Workload Generation
-
-The workload generator creates reproducible task sets using a random seed.
-
-Each task contains information such as:
-
-```text
-Task ID
-Arrival Time
-Execution Time
-Deadline
-Priority
-Task Type
-Input Size
-```
-
-Task types include:
-
-```text
-CPU
-IO
-PERIODIC
-APERIODIC
-```
-
-A fixed seed can be used to generate the same workload for repeatable experiments.
-
-## Performance Metrics
-
-The system evaluates scheduling performance using:
-
-### Waiting Time
-
-Time a task spends waiting before execution.
-
-### Response Time
-
-Time from task arrival until it first starts execution.
-
-### Turnaround Time
-
-```text
-Completion Time - Arrival Time
-```
-
-### Tardiness
-
-Amount of time by which a task completes after its deadline.
-
-### Deadline Misses
-
-Number of tasks that complete after their deadlines.
-
-### CPU Utilization
-
-Percentage of simulation time during which the CPU is executing tasks.
-
-### Throughput
-
-Number of completed tasks per unit of simulation time.
-
-### Context Switches
-
-Number of times the scheduler switches between tasks.
-
-### Preemptions
-
-Number of times a running task is interrupted so another task can execute.
-
-## Running the Project Locally
-
-### 1. Clone the repository
+### 1. Clone the Repository
 
 ```bash
-git clone YOUR_GITHUB_REPOSITORY_URL
-cd ML_Task_Scheduler
+git clone https://github.com/bejavadaakshaykumar/ML-Enhanced-Real-Time-Task-Scheduler.git
+cd ML-Enhanced-Real-Time-Task-Scheduler
 ```
 
-### 2. Create a virtual environment
-
-Windows:
+### 2. Create a Virtual Environment
 
 ```bash
+# Windows
 python -m venv venv
 venv\Scripts\activate
-```
 
-Linux/macOS:
-
-```bash
+# Linux/macOS
 python3 -m venv venv
 source venv/bin/activate
 ```
 
-### 3. Install dependencies
+### 3. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## Train the Machine Learning Models
-
-Generate the ML dataset:
+### 4. Train ML Models (Optional — pre-trained models included)
 
 ```bash
-python -m ml.dataset
+python -m ml.dataset              # Generate training data
+python -m ml.train_regression     # Train execution time predictor
+python -m ml.train_classifier     # Train deadline-miss classifier
 ```
 
-Train the execution-time regression model:
-
-```bash
-python -m ml.train_regression
-```
-
-Evaluate the regression model:
-
-```bash
-python -m ml.evaluate
-```
-
-Train the deadline-miss classifier:
-
-```bash
-python -m ml.train_classifier
-```
-
-Evaluate the classifier:
-
-```bash
-python -m ml.evaluate_classifier
-```
-
-After training, the models should be available in:
-
-```text
-models/
-├── execution_time_model.pkl
-└── deadline_miss_model.pkl
-```
-
-## Run the Scheduler Experiment
-
-Run the comparison experiment:
-
-```bash
-python -m experiments.run_experiment
-```
-
-The experiment compares:
-
-```text
-FIFO
-EDF
-ML-EDF
-```
-
-using the same workload.
-
-Generated files include:
-
-```text
-data/experiment_workload.csv
-results/scheduler_comparison.csv
-results/scheduler_comparison.json
-```
-
-## Run Tests
-
-Run the complete test suite:
-
-```bash
-python -m pytest -q
-```
-
-The tests cover:
-
-- FIFO scheduler
-- Min-Heap
-- EDF scheduler
-- Simulation engine
-- ML-EDF scheduler
-
-## Run the Streamlit Dashboard
-
-Start the dashboard locally:
+### 5. Run the Dashboard
 
 ```bash
 streamlit run dashboard/app.py
 ```
 
-Streamlit will provide a local address such as:
+Open `http://localhost:8501` in your browser.
 
-```text
-http://localhost:8501
-```
-
-Open that address in your browser.
-
-## GitHub Deployment
-
-The dashboard can be deployed using GitHub and Streamlit Community Cloud.
-
-### Repository
-
-Push the complete project to GitHub:
+### 6. Run Tests
 
 ```bash
-git init
-git add .
-git commit -m "Initial project commit"
-git branch -M main
-git remote add origin YOUR_GITHUB_REPOSITORY_URL
-git push -u origin main
+python -m pytest tests/ -v
 ```
 
-### Streamlit Configuration
+Expected output: **20 passed** ✅
 
-In Streamlit Community Cloud, select:
+### 7. Run CLI Experiment
 
-```text
-Repository: ML_Task_Scheduler
-Branch: main
-Main file path: dashboard/app.py
+```bash
+python -m experiments.run_experiment
 ```
 
-The platform installs dependencies from:
+## 📊 Dashboard Sections
 
-```text
-requirements.txt
-```
+The Streamlit dashboard includes **8 sections**:
 
-and runs:
+| # | Section | Description |
+|---|---------|-------------|
+| 1 | **Workload Overview** | Generated tasks with feasibility status |
+| 2 | **Performance Comparison** | Key metrics with delta cards (ML-EDF vs EDF) |
+| 3 | **Comparison Charts** | Interactive Plotly bar charts (wait time, misses, CPU, throughput) |
+| 4 | **Execution Timeline** | Gantt chart showing task execution order with deadline status |
+| 5 | **Per-Task Results** | Deadline met/missed per task for each scheduler |
+| 6 | **ML Predictions** | Actual vs predicted execution time + EDF vs ML-EDF order comparison |
+| 7 | **Why ML-EDF Differs** | Risk analysis with slack status, miss probability, urgency scores |
+| 8 | **Simulation Summary** | Total time, context switches, preemptions per scheduler |
 
-```text
-dashboard/app.py
-```
+## 🧪 Test Coverage
 
-## Reproducibility
+| Test File | Tests | Covers |
+|-----------|-------|--------|
+| `test_fifo.py` | 1 | FIFO ordering |
+| `test_min_heap.py` | 2 | Heap push/pop/peek operations |
+| `test_edf.py` | 1 | EDF deadline-based ordering |
+| `test_simulator.py` | 9 | Simulation engine, preemption, context switches, idle CPU, same-deadline tiebreaking, deadline miss detection |
+| `test_ml_edf.py` | 7 | ML predictions, urgency formula verification, scheduling order tracking, state reset, delayed arrivals |
+| `test_workload.py` | 3 | Workload generation, reproducibility, seed variation |
+| **Total** | **20** | |
 
-Experiments use a fixed random seed when required.
+## 📈 Performance Metrics Explained
 
-For example:
+| Metric | Formula | Lower is Better? |
+|--------|---------|:-:|
+| Waiting Time | `start_time − arrival_time` | ✅ |
+| Response Time | `first_run_time − arrival_time` | ✅ |
+| Turnaround Time | `completion_time − arrival_time` | ✅ |
+| Tardiness | `max(0, completion_time − deadline)` | ✅ |
+| Deadline Misses | Count of tasks where `completion > deadline` | ✅ |
+| CPU Utilization | `busy_time / total_time × 100` | ❌ (higher better) |
+| Throughput | `completed_tasks / total_time` | ❌ (higher better) |
 
-```text
-Seed = 42
-```
+## 🔮 Future Enhancements
 
-Using the same workload allows FIFO, EDF, and ML-EDF to be compared under identical task conditions.
-
-## Testing Strategy
-
-The project follows unit-testing principles.
-
-### Scheduler Tests
-
-Verify that:
-
-- Tasks are added correctly.
-- Tasks are selected according to scheduler rules.
-- Queues maintain the expected order.
-
-### Heap Tests
-
-Verify:
-
-- Push operation
-- Pop operation
-- Peek operation
-- Heap ordering
-- Empty heap behavior
-
-### Simulator Tests
-
-Verify:
-
-- Task execution
-- Clock advancement
-- Completion time
-- Context switches
-- Preemption
-- Deadline handling
-
-### ML-EDF Tests
-
-Verify:
-
-- ML predictions are generated.
-- Tasks receive scheduling keys.
-- The ML-EDF ready queue operates correctly.
-
-## Example Workflow
-
-```text
-1. Generate workload
-          |
-          v
-2. Create task dataset
-          |
-          v
-3. Train ML models
-          |
-          v
-4. Load trained models
-          |
-          v
-5. Run FIFO
-          |
-          v
-6. Run EDF
-          |
-          v
-7. Run ML-EDF
-          |
-          v
-8. Calculate metrics
-          |
-          v
-9. Compare results
-          |
-          v
-10. Visualize through Streamlit
-```
-
-## Project Goals
-
-The main goals of this project are:
-
-- Implement real-time scheduling algorithms.
-- Understand CPU scheduling and deadline-based scheduling.
-- Implement a custom Min-Heap data structure.
-- Build a deterministic simulation environment.
-- Apply Machine Learning to execution-time prediction.
-- Apply Machine Learning to deadline-miss prediction.
-- Develop an ML-enhanced scheduling strategy.
-- Compare classical and ML-enhanced scheduling approaches.
-- Demonstrate results through an interactive dashboard.
-
-## Applications
-
-Potential application areas include:
-
-- Real-time operating systems
-- Embedded systems
-- IoT systems
-- Industrial automation
-- Robotics
-- Edge computing
-- Autonomous systems
-- Real-time data processing
-- CPU task scheduling research
-
-## Future Enhancements
-
-Possible future improvements include:
-
-- Additional scheduling algorithms such as RM and DM
-- Reinforcement-learning-based scheduling
-- Online model retraining
-- Dynamic task priorities
+- Rate Monotonic (RM) and Deadline Monotonic (DM) schedulers
+- Reinforcement learning-based scheduling
+- Online model retraining during simulation
 - Multi-core CPU simulation
-- Energy-aware scheduling
-- Resource-aware scheduling
-- More advanced workload models
+- Energy-aware and resource-aware scheduling
 - Real-time task arrival streams
-- Hardware/RTOS integration
 
-## Author
+## 👤 Author
 
 **Bejavada Akshay Kumar**
 
-B.Tech - Electronics and Communication Engineering
+B.Tech — Electronics and Communication Engineering, ANITS
 
-ANITS
-
-## License
+## 📄 License
 
 This project is intended for academic, learning, and demonstration purposes.

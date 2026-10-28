@@ -1,13 +1,35 @@
+import os
+
 import joblib
 import pandas as pd
 
 from scheduler.task import Task
 
 
-MODEL_FILE = "models/execution_time_model.pkl"
+# Resolve model path relative to the project root,
+# regardless of the current working directory.
+PROJECT_ROOT = os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))
+)
+
+MODEL_FILE = os.path.join(
+    PROJECT_ROOT,
+    "models",
+    "execution_time_model.pkl"
+)
 
 
 class ExecutionTimePredictor:
+    """
+    Predicts the execution time of a task using a trained
+    Random Forest Regressor model.
+
+    Input features:
+        arrival_time, deadline, priority, input_size
+
+    Output:
+        Predicted execution time (integer, minimum 1)
+    """
 
     def __init__(
         self,
@@ -19,6 +41,11 @@ class ExecutionTimePredictor:
         )
 
     def predict(self, task):
+        """
+        Predict execution time for a single task.
+
+        Returns an integer >= 1.
+        """
 
         features = pd.DataFrame(
             [[

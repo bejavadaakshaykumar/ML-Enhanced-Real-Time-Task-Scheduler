@@ -2,6 +2,15 @@ from collections import deque
 
 
 class FIFOScheduler:
+    """
+    First-In, First-Out (FIFO) Scheduler.
+
+    Tasks are executed in the order they arrive in the ready queue.
+    This is the simplest scheduling algorithm — no priority or
+    deadline information is used.
+
+    Used as a baseline comparison against EDF and ML-EDF.
+    """
 
     def __init__(self):
         self.queue = deque()
@@ -18,6 +27,13 @@ class FIFOScheduler:
             return None
 
         return self.queue.popleft()
+
+    def peek_task(self):
+        """Return the next task without removing it."""
+        if not self.queue:
+            return None
+
+        return self.queue[0]
 
     def is_empty(self):
         return len(self.queue) == 0

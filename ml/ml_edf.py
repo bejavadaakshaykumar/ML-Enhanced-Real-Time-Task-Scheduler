@@ -19,14 +19,33 @@ class MLEDFScheduler:
     """
     Machine-Learning Enhanced Earliest Deadline First Scheduler.
 
-    Scheduling decision uses:
+    ML-EDF extends the classical EDF algorithm by incorporating
+    two ML predictions into each scheduling decision:
 
-    1. Deadline
-    2. Predicted execution time
-    3. Predicted deadline-miss probability
-    4. Remaining slack
+    1. **Predicted Execution Time** — A Random Forest regression
+       model estimates how long a task will take to execute.
 
-    Smaller score = higher scheduling priority.
+    2. **Deadline-Miss Probability** — A Random Forest classifier
+       estimates the probability that a task will miss its deadline.
+
+    These predictions are combined into a risk-aware urgency score:
+
+        remaining_slack = deadline - current_time - predicted_exec_time
+        risk_score      = miss_probability × risk_weight
+        urgency_score   = remaining_slack - risk_score
+
+    A **smaller** urgency score means **higher** scheduling priority.
+
+    When risk_weight = 0, ML-EDF degrades to a slack-based variant
+    of EDF (tasks with less remaining slack are scheduled first).
+    The deadline is used as a secondary tiebreaker so that the
+    ordering remains consistent with classical EDF.
+
+    Design Note
+    -----------
+    This is a project-specific risk-aware EDF policy rather than
+    a standard textbook algorithm. Its purpose is to demonstrate
+    how ML predictions can augment classical scheduling heuristics.
     """
 
     def __init__(
@@ -52,12 +71,18 @@ class MLEDFScheduler:
             DeadlineMissPredictor()
         )
 
-        # Store predictions for inspection
+        # Store predictions for dashboard inspection
         self.predictions = {}
+
+        # Track scheduling order for comparison
+        self.scheduling_order = []
 
     def update_time(self, current_time):
         """
         Update the virtual scheduler time.
+
+        Called by the simulator before each scheduling decision
+        so that slack calculations use the correct current time.
         """
 
         self.current_time = current_time
@@ -65,6 +90,12 @@ class MLEDFScheduler:
     def predict_task(self, task):
         """
         Generate ML predictions for a task.
+
+        Returns a dictionary containing:
+        - predicted_execution_time: estimated execution duration
+        - deadline_miss_probability: probability of missing deadline (0.0–1.0)
+        - remaining_slack: deadline - current_time - predicted_exec_time
+        - urgency_score: the final risk-adjusted scheduling score
         """
 
         predicted_execution_time = (
@@ -81,6 +112,17 @@ class MLEDFScheduler:
             - predicted_execution_time
         )
 
+        # Risk-adjusted urgency (lower = more urgent)
+        risk_score = (
+            deadline_miss_probability
+            * self.risk_weight
+        )
+
+        urgency_score = (
+            remaining_slack
+            - risk_score
+        )
+
         prediction_data = {
             "predicted_execution_time":
                 predicted_execution_time,
@@ -89,7 +131,13 @@ class MLEDFScheduler:
                 deadline_miss_probability,
 
             "remaining_slack":
-                remaining_slack
+                remaining_slack,
+
+            "risk_score":
+                risk_score,
+
+            "urgency_score":
+                urgency_score
         }
 
         self.predictions[
@@ -102,19 +150,24 @@ class MLEDFScheduler:
         """
         Calculate ML-EDF scheduling priority.
 
-        Tasks with:
-        - smaller slack
-        - higher deadline-miss probability
-        - earlier deadline
+        The key tuple determines heap ordering. Elements are
+        compared left-to-right (Python tuple comparison):
 
-        receive higher priority.
-
-        This is a project-specific risk-aware EDF
-        policy rather than standard EDF.
+        1. urgency_score   — primary: lower slack & higher risk → first
+        2. deadline        — tiebreaker: earlier deadline → first
+        3. -miss_prob      — tiebreaker: higher risk → first
+        4. predicted_exec  — tiebreaker: shorter predicted job → first
+        5. priority        — tiebreaker: lower priority value → first
+        6. arrival_time    — tiebreaker: earlier arrival → first
+        7. task_id         — final tiebreaker: deterministic ordering
         """
 
         prediction = self.predict_task(
             task
+        )
+
+        urgency_score = (
+            prediction["urgency_score"]
         )
 
         predicted_execution_time = (
@@ -127,27 +180,6 @@ class MLEDFScheduler:
             prediction[
                 "deadline_miss_probability"
             ]
-        )
-
-        slack = (
-            prediction[
-                "remaining_slack"
-            ]
-        )
-
-        # Risk-adjusted urgency
-        risk_score = (
-            miss_probability
-            * self.risk_weight
-        )
-
-        # Lower slack means greater urgency.
-        #
-        # Negative slack means the predicted
-        # execution time cannot fit before deadline.
-        urgency_score = (
-            slack
-            - risk_score
         )
 
         return (
@@ -173,7 +205,14 @@ class MLEDFScheduler:
 
     def select_task(self):
 
-        return self.ready_queue.pop()
+        task = self.ready_queue.pop()
+
+        if task is not None:
+            self.scheduling_order.append(
+                task.task_id
+            )
+
+        return task
 
     def peek_task(self):
 
@@ -193,10 +232,19 @@ class MLEDFScheduler:
 
         self.predictions.clear()
 
+        self.scheduling_order.clear()
+
     def get_prediction(self, task_id):
 
         return self.predictions.get(
             task_id
+        )
+
+    def get_all_predictions(self):
+        """Return all predictions sorted by task_id."""
+
+        return dict(
+            sorted(self.predictions.items())
         )
 
     def print_predictions(self):
@@ -216,7 +264,9 @@ class MLEDFScheduler:
                 f"Miss Probability = "
                 f"{prediction['deadline_miss_probability']:.2%}, "
                 f"Slack = "
-                f"{prediction['remaining_slack']}"
+                f"{prediction['remaining_slack']}, "
+                f"Urgency = "
+                f"{prediction['urgency_score']:.2f}"
             )
 
         print(
@@ -301,6 +351,11 @@ if __name__ == "__main__":
         print(
             f"  Predicted Slack         : "
             f"{prediction['remaining_slack']}"
+        )
+
+        print(
+            f"  Urgency Score           : "
+            f"{prediction['urgency_score']:.2f}"
         )
 
         print()

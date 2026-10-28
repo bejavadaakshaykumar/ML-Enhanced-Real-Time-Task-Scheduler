@@ -2,6 +2,20 @@ from .min_heap import MinHeap
 
 
 class EDFScheduler:
+    """
+    Earliest Deadline First (EDF) Scheduler.
+
+    Selects the task with the earliest (smallest) deadline
+    from the ready queue. This is the optimal preemptive
+    uniprocessor scheduling algorithm for real-time systems
+    when all tasks have deadlines.
+
+    Tie-breaking order:
+        1. deadline     — earliest deadline first
+        2. priority     — lower priority value first
+        3. arrival_time — earlier arrival first
+        4. task_id      — deterministic ordering
+    """
 
     def __init__(self, preemptive=False):
         self.preemptive = preemptive
